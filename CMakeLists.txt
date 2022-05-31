@@ -37,10 +37,12 @@ option(BUILD_TESTS "Build tests" ON)
 
 set(TWS_SOURCES
     "${tws_SOURCE_DIR}/src/tws.c"
+    "${tws_SOURCE_DIR}/src/divide.c"
 )
 
 set(TWS_HEADERS
     "${tws_SOURCE_DIR}/tws/tws.h"
+    "${tws_SOURCE_DIR}/include/divide.h"
 )
 
 include_directories(
