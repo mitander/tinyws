@@ -29,6 +29,7 @@ struct SockAddrInIPv6
     u_int32_t scope_id;
     struct InAddrIPv6 addr;
 };
+
 struct InAddr
 {
     uint32_t addr;
@@ -62,7 +63,7 @@ struct AddrInfo
 
 struct SockAddrStorage
 {
-    int family; // TODO: check what type this should be.
+    int family;
 };
 
 #endif

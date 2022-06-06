@@ -1,21 +1,52 @@
 #include <stdio.h>
-#include <tws/tws.h>
+#include <string.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netdb.h>
 #include <arpa/inet.h>
+#include <netinet/in.h>
 
-int main()
+int main(int argc, char *argv[])
 {
-    char ip4[INET_ADDRSTRLEN];
-    char ip6[INET6_ADDRSTRLEN];
+    struct addrinfo hints, *res, *p;
+    int status;
+    char ipstr[INET6_ADDRSTRLEN];
 
-    struct SockAddrIn sa;
-    struct SockAddrInIPv6 sa6;
+    if(argc != 2) {
+        fprintf(stderr, "usage: example hostname\n");
+        return 1;
+    }
 
-    inet_pton(AF_INET, "10.12.110.58", &(sa.addr));
-    inet_pton(AF_INET6, "2001:db8:63b3:1::3490", &(sa6.addr));
+    memset(&hints, 0, sizeof hints);
+    hints.ai_family = AF_UNSPEC; // AF_INET or AF_INET6 to force version
+    hints.ai_socktype = SOCK_STREAM;
 
-    inet_ntop(AF_INET, &(sa.addr), ip4, INET_ADDRSTRLEN);
-    printf("The IPv4 address is: %s\n", ip4);
+    if((status = getaddrinfo(argv[1], NULL, &hints, &res)) != 0) {
+        fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(status));
+        return 2;
+    }
 
-    inet_ntop(AF_INET6, &(sa6.addr), ip6, INET6_ADDRSTRLEN);
-    printf("The IPv6 address is: %s\n", ip6);
+    printf("IP addresses for %s:\n\n", argv[1]);
+
+    for(p = res; p != NULL; p = p->ai_next) {
+        void *addr;
+        char *ipver;
+
+        if(p->ai_family == AF_INET) {
+            struct sockaddr_in *ipv4 = (struct sockaddr_in *) p->ai_addr;
+            addr = &(ipv4->sin_addr);
+            ipver = "IPv4";
+        } else { // IPv6
+            struct sockaddr_in6 *ipv6 = (struct sockaddr_in6 *) p->ai_addr;
+            addr = &(ipv6->sin6_addr);
+            ipver = "IPv6";
+        }
+
+        inet_ntop(p->ai_family, addr, ipstr, sizeof ipstr);
+        printf(" %s: %s\n", ipver, ipstr);
+    }
+
+    freeaddrinfo(res);
+
+    return 0;
 }
