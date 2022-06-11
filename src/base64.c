@@ -14,11 +14,11 @@ unsigned char *base64_encode(const unsigned char *src, size_t len, size_t *out_l
     size_t olen;
     int line_len;
 
-    olen = len * 4 / 3 + 4; /* 3-byte blocks to 4-byte */
-    olen += olen / 72;      /* line feeds */
-    olen++;                 /* nul termination */
+    olen = len * 4 / 3 + 4;
+    olen += olen / 72;
+    olen++;
     if(olen < len)
-        return NULL; /* integer overflow */
+        return NULL;
     out = malloc(olen);
     if(out == NULL)
         return NULL;
@@ -119,7 +119,6 @@ unsigned char *base64_decode(const unsigned char *src, size_t len, size_t *out_l
                     pos -= 2;
                 else
                 {
-                    /* Invalid padding */
                     free(out);
                     return NULL;
                 }

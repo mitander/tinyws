@@ -28,82 +28,81 @@ int sha1_reset(struct sha_ctx *ctx)
     return SHA_ERR_OK;
 }
 
-int sha1_result(struct sha_ctx *context, uint8_t Message_Digest[SHA1_HASH_SIZE])
+int sha1_result(struct sha_ctx *ctx, uint8_t Message_Digest[SHA1_HASH_SIZE])
 {
     int i;
 
-    if(!context || !Message_Digest)
+    if(!ctx || !Message_Digest)
     {
         return SHA_ERR_NULL;
     }
 
-    if(context->corrupted)
+    if(ctx->corrupted)
     {
-        return context->corrupted;
+        return ctx->corrupted;
     }
 
-    if(!context->count)
+    if(!ctx->count)
     {
-        pad_msg(context);
+        pad_msg(ctx);
         for(i = 0; i < 64; ++i)
         {
-            /* message may be sensitive, clear it out */
-            context->msg_block[i] = 0;
+            ctx->msg_block[i] = 0;
         }
-        context->low_len = 0; /* and clear length */
-        context->high_len = 0;
-        context->count = 1;
+        ctx->low_len = 0;
+        ctx->high_len = 0;
+        ctx->count = 1;
     }
 
     for(i = 0; i < SHA1_HASH_SIZE; ++i)
     {
-        Message_Digest[i] = context->hash[i >> 2] >> 8 * (3 - (i & 0x03));
+        Message_Digest[i] = ctx->hash[i >> 2] >> 8 * (3 - (i & 0x03));
     }
 
     return SHA_ERR_OK;
 }
 
-int sha1_input(struct sha_ctx *context, const uint8_t *message_array, unsigned length)
+int sha1_input(struct sha_ctx *ctx, const uint8_t *message_array, unsigned length)
 {
     if(!length)
     {
         return SHA_ERR_OK;
     }
 
-    if(!context || !message_array)
+    if(!ctx || !message_array)
     {
         return SHA_ERR_NULL;
     }
 
-    if(context->count)
+    if(ctx->count)
     {
-        context->corrupted = SHA_ERR_STATE;
+        ctx->corrupted = SHA_ERR_STATE;
 
         return SHA_ERR_STATE;
     }
 
-    if(context->corrupted)
+    if(ctx->corrupted)
     {
-        return context->corrupted;
+        return ctx->corrupted;
     }
-    while(length-- && !context->corrupted)
+    while(length-- && !ctx->corrupted)
     {
-        context->msg_block[context->msg_block_idx++] = (*message_array & 0xFF);
+        ctx->msg_block[ctx->msg_block_idx++] = (*message_array & 0xFF);
 
-        context->low_len += 8;
-        if(context->low_len == 0)
+        ctx->low_len += 8;
+        if(ctx->low_len == 0)
         {
-            context->high_len++;
-            if(context->high_len == 0)
+            ctx->high_len++;
+            if(ctx->high_len == 0)
             {
-                /* Message is too long */
-                context->corrupted = 1;
+                // msg too long
+                ctx->corrupted = 1;
             }
         }
 
-        if(context->msg_block_idx == 64)
+        if(ctx->msg_block_idx == 64)
         {
-            process_msg_block(context);
+            process_msg_block(ctx);
         }
 
         message_array++;
@@ -114,12 +113,11 @@ int sha1_input(struct sha_ctx *context, const uint8_t *message_array, unsigned l
 
 void process_msg_block(struct sha_ctx *ctx)
 {
-    const uint32_t K[] = {/* Constants defined in SHA-1   */
-                          0x5A827999, 0x6ED9EBA1, 0x8F1BBCDC, 0xCA62C1D6};
-    int t;                  /* Loop counter                */
-    uint32_t temp;          /* Temporary word value        */
-    uint32_t W[80];         /* Word sequence               */
-    uint32_t A, B, C, D, E; /* Word buffers                */
+    const uint32_t K[] = {0x5A827999, 0x6ED9EBA1, 0x8F1BBCDC, 0xCA62C1D6};
+    int t;
+    uint32_t temp;
+    uint32_t W[80];
+    uint32_t A, B, C, D, E;
 
     for(t = 0; t < 16; t++)
     {
