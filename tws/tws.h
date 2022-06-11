@@ -23,7 +23,7 @@
 
 #define TWS_KEY_LEN 24
 #define TWS_MS_LEN 36
-#define TWS_KEY_MS_LEN (WS_KEY_LEN + WS_MS_LEN)
+#define TWS_KEY_MS_LEN (TWS_KEY_LEN + TWS_MS_LEN)
 #define MAGIC_STRING "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
 
 #define TWS_HS_REQ "Sec-WebSocket-Key"
@@ -38,7 +38,7 @@
 #define TWS_FRAME_OP_TXT 1
 #define TWS_FRAME_OP_CLOSE 8
 #define TWS_FRAME_OP_UNSUPPORTED 0xF
-#define TWS_FRAME_MAX__LEN (16 * 1024 * 1024)
+#define TWS_FRAME_MAX_LEN (16 * 1024 * 1024)
 
 struct tws_events
 {
@@ -46,6 +46,9 @@ struct tws_events
     void (*onclose)(int);
     void (*onmessage)(int, unsigned char *);
 };
+
+TWS_EXPORT int tws_handshake_accept(char *key, unsigned char **dst);
+TWS_EXPORT int tws_handshake_response(char *req, char **res);
 
 TWS_EXPORT int tws_send_frame(int fd, char *msg);
 TWS_EXPORT int tws_socket_listen(struct tws_events *events, int port);
