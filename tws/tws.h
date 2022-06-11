@@ -16,54 +16,39 @@
 #define TWS_EXPORT TWS_EXTERN_C __attribute__((visibility("default")))
 #endif
 
-struct InAddrIPv6
+#define MSG_LEN 2048
+
+#define MAX_CLIENTS 8
+#define MAX_PORT 65535
+
+#define TWS_KEY_LEN 24
+#define TWS_MS_LEN 36
+#define TWS_KEY_MS_LEN (WS_KEY_LEN + WS_MS_LEN)
+#define MAGIC_STRING "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
+
+#define TWS_HS_REQ "Sec-WebSocket-Key"
+#define TWS_HS_ACCEPT_LEN 130
+#define TWS_HS_ACCEPT                                                                              \
+    "HTTP/1.1 101 Switching Protocols\r\n"                                                         \
+    "Upgrade: websocket\r\n"                                                                       \
+    "Connection: Upgrade\r\n"                                                                      \
+    "Sec-WebSocket-Accept: "
+
+#define TWS_FIN 128
+#define TWS_FRAME_OP_TXT 1
+#define TWS_FRAME_OP_CLOSE 8
+#define TWS_FRAME_OP_UNSUPPORTED 0xF
+#define TWS_FRAME_MAX__LEN (16 * 1024 * 1024)
+
+struct tws_events
 {
-    unsigned char addr[16];
+    void (*onopen)(int);
+    void (*onclose)(int);
+    void (*onmessage)(int, unsigned char *);
 };
 
-struct SockAddrInIPv6
-{
-    u_int16_t family;
-    u_int16_t port;
-    u_int32_t flowinfo;
-    u_int32_t scope_id;
-    struct InAddrIPv6 addr;
-};
+TWS_EXPORT int tws_send_frame(int fd, char *msg);
+TWS_EXPORT int tws_socket_listen(struct tws_events *events, int port);
+TWS_EXPORT char *tws_get_address(int fd);
 
-struct InAddr
-{
-    uint32_t addr;
-};
-
-struct SockAddrIn
-{
-    short int family;
-    unsigned short int port;
-    unsigned char zero[8];
-    struct InAddr addr;
-};
-
-struct SockAddr
-{
-    unsigned short family;
-    char data[14];
-};
-
-struct AddrInfo
-{
-    int flags;
-    int family;
-    int socktype;
-    int protocol;
-    size_t addrlen;
-    char *chname;
-    struct SockAddr *addr;
-    struct AddrInfo *next;
-};
-
-struct SockAddrStorage
-{
-    int family;
-};
-
-#endif
+#endif // TWS_TWS_H
