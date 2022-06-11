@@ -37,10 +37,16 @@ option(BUILD_TESTS "Build tests" ON)
 
 set(TWS_SOURCES
     "${tws_SOURCE_DIR}/src/tws.c"
+    "${tws_SOURCE_DIR}/src/base64.c"
+    "${tws_SOURCE_DIR}/src/sha1.c"
+    "${tws_SOURCE_DIR}/src/handshake.c"
 )
 
 set(TWS_HEADERS
     "${tws_SOURCE_DIR}/tws/tws.h"
+    "${tws_SOURCE_DIR}/include/base64.h"
+    "${tws_SOURCE_DIR}/include/sha1.h"
+    "${tws_SOURCE_DIR}/include/handshake.h"
 )
 
 include_directories(
