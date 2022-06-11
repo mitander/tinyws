@@ -12,7 +12,6 @@ static int mod_table[] = {0, 2, 1};
 
 char *base64_encode(const unsigned char *data, size_t len, size_t *out_len)
 {
-    printf("len: %lul\n", 4 * ((len + 2) / 3));
     *out_len = 4 * ((len + 2) / 3);
 
     char *encoded_data = malloc(*out_len);
