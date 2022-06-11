@@ -140,17 +140,25 @@ static void *tws_connect(void *vsock)
 {
     int sock;
     size_t n;
+    char *res;
     unsigned char frame[MSG_LEN];
     unsigned char *msg;
     int type;
+    int hs_done;
 
 
     sock = (int) (intptr_t) vsock;
 
-    /* Receives message until get some error. */
     while((n = read(sock, frame, sizeof(unsigned char) * MSG_LEN)) > 0)
     {
-        // TODO: handshake
+        if(!hs_done)
+        {
+            tws_handshake_response((char *) frame, &res);
+            hs_done = 1;
+            n = write(sock, res, strlen(res));
+            g_events.onopen(sock);
+            free(res);
+        }
 
         msg = tws_receive_frame(frame, n, &type);
 
