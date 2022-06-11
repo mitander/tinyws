@@ -86,6 +86,7 @@ static unsigned char *tws_receive_frame(unsigned char *frame, size_t length, int
 
     if(frame[0] == (TWS_FIN | TWS_FRAME_OP_TXT))
     {
+        printf("here\n");
         *type = TWS_FRAME_OP_TXT;
         idx_mask = 2;
         mask = frame[1];
@@ -110,12 +111,16 @@ static unsigned char *tws_receive_frame(unsigned char *frame, size_t length, int
 
         msg[j] = '\0';
     }
-
     else if(frame[0] == (TWS_FIN | TWS_FRAME_OP_CLOSE))
+    {
+        printf("here2\n");
         *type = TWS_FRAME_OP_CLOSE;
-
+    }
     else
+    {
+        printf("here3\n");
         *type = frame[0] & 0x0F;
+    }
 
     return msg;
 }
@@ -156,7 +161,12 @@ static void *tws_connect(void *vsock)
             tws_handshake_response((char *) frame, &res);
             hs_done = 1;
             n = write(sock, res, strlen(res));
-            g_events.onopen(sock);
+            g_events.open_cb(sock);
+            printf("Handshake response: \n"
+                   "------------------------------------\n"
+                   "%s"
+                   "------------------------------------\n",
+                   res);
             free(res);
         }
 
@@ -164,15 +174,23 @@ static void *tws_connect(void *vsock)
 
         if(msg == NULL)
         {
-            printf("Received invalid frame from socket %d\n", sock);
+            printf("Received invalid frame from client %d", sock);
+            if(type == TWS_FRAME_OP_CLOSE)
+                printf(": close frame!\n");
+            else
+            {
+                printf(", type: %x\n", type);
+                continue;
+            }
         }
+
 
         switch(type)
         {
             case TWS_FRAME_OP_TXT:
-                g_events.onmessage(sock, msg);
+                g_events.msg_cb(sock, msg);
             case TWS_FRAME_OP_CLOSE:
-                g_events.onclose(sock);
+                g_events.close_cb(sock);
                 goto closed;
             default:; // do nothing
         }
@@ -238,11 +256,8 @@ int tws_socket_listen(struct tws_events *events, int port)
             exit(-1);
         }
 
-        /* TODO: see if it's possible to cast like this:
-         *      if(pthread_create(&client_thread, NULL, tws_connect, &(int){new_sock}) != 0)
-         * to avoid losing optimization oppurtunities */
-
         pthread_t client_thread;
+        // TODO: remove int to pointer cast
         if(pthread_create(&client_thread, NULL, tws_connect, (void *) (intptr_t) sock) != 0)
             perror("Could not create client thread\n");
 

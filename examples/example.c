@@ -1,52 +1,44 @@
 #include <stdio.h>
-#include <string.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netdb.h>
-#include <arpa/inet.h>
-#include <netinet/in.h>
+#include <stdlib.h>
+#include <stdbool.h>
+#include <unistd.h>
+#include <tws/tws.h>
 
-int main(int argc, char *argv[])
+void open_cb(int fd)
 {
-    struct addrinfo hints, *res, *p;
-    int status;
-    char ipstr[INET6_ADDRSTRLEN];
+    char *addr;
+    addr = tws_get_address(fd);
+    printf("Connection opened. Client: %d - Addr: %s\n", fd, addr);
+    free(addr);
+}
 
-    if(argc != 2) {
-        fprintf(stderr, "usage: example hostname\n");
-        return 1;
-    }
+void close_cb(int fd)
+{
+    char *addr;
+    addr = tws_get_address(fd);
+    printf("Connection closed. Client: %d - Addr: %s\n", fd, addr);
+    free(addr);
+}
 
-    memset(&hints, 0, sizeof hints);
-    hints.ai_family = AF_UNSPEC; // AF_INET or AF_INET6 to force version
-    hints.ai_socktype = SOCK_STREAM;
+void msg_cb(int fd, unsigned char *msg)
+{
+    char *addr;
+    addr = tws_get_address(fd);
+    printf("Received message from %s/%d: %s\n", addr, fd, msg);
 
-    if((status = getaddrinfo(argv[1], NULL, &hints, &res)) != 0) {
-        fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(status));
-        return 2;
-    }
+    tws_send_frame(fd, (char *) msg);
 
-    printf("IP addresses for %s:\n\n", argv[1]);
+    free(addr);
+    free(msg);
+}
 
-    for(p = res; p != NULL; p = p->ai_next) {
-        void *addr;
-        char *ipver;
-
-        if(p->ai_family == AF_INET) {
-            struct sockaddr_in *ipv4 = (struct sockaddr_in *) p->ai_addr;
-            addr = &(ipv4->sin_addr);
-            ipver = "IPv4";
-        } else { // IPv6
-            struct sockaddr_in6 *ipv6 = (struct sockaddr_in6 *) p->ai_addr;
-            addr = &(ipv6->sin6_addr);
-            ipver = "IPv6";
-        }
-
-        inet_ntop(p->ai_family, addr, ipstr, sizeof ipstr);
-        printf(" %s: %s\n", ipver, ipstr);
-    }
-
-    freeaddrinfo(res);
+int main()
+{
+    struct tws_events evs;
+    evs.open_cb = &open_cb;
+    evs.close_cb = &close_cb;
+    evs.msg_cb = &msg_cb;
+    tws_socket_listen(&evs, 8080);
 
     return 0;
 }

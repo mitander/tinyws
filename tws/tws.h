@@ -42,12 +42,12 @@
 
 struct tws_events
 {
-    void (*onopen)(int);
-    void (*onclose)(int);
-    void (*onmessage)(int, unsigned char *);
+    void (*open_cb)(int);
+    void (*close_cb)(int);
+    void (*msg_cb)(int, unsigned char *);
 };
 
-TWS_EXPORT int tws_handshake_accept(char *key, unsigned char **dst);
+TWS_EXPORT int tws_handshake_accept(char *key, char **dst);
 TWS_EXPORT int tws_handshake_response(char *req, char **res);
 
 TWS_EXPORT int tws_send_frame(int fd, char *msg);
