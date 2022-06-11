@@ -10,11 +10,10 @@ static const unsigned char encoding_table[65] =
 /* static char *decoding_table = NULL; */
 static int mod_table[] = {0, 2, 1};
 
-char *base64_encode(const unsigned char *data, size_t len, size_t *out_len)
+char *base64_encode(const unsigned char *data, size_t len)
 {
-    *out_len = 4 * ((len + 2) / 3);
-
-    char *encoded_data = malloc(*out_len);
+    size_t out_len = 4 * ((len + 2) / 3);
+    char *encoded_data = malloc(out_len);
     if(encoded_data == NULL)
         return NULL;
 
@@ -33,19 +32,17 @@ char *base64_encode(const unsigned char *data, size_t len, size_t *out_len)
     }
 
     for(int i = 0; i < mod_table[len % 3]; i++)
-        encoded_data[*out_len - 1 - i] = '=';
+        encoded_data[out_len - 1 - i] = '=';
 
     return encoded_data;
 }
 
 
-unsigned char *base64_decode(const unsigned char *data, size_t input_length, size_t *output_length)
+char *base64_decode(const unsigned char *data, size_t input_length, size_t *output_length)
 {
     char decoding_table[64];
     for(int i = 0; i < 64; i++)
         decoding_table[(unsigned char) encoding_table[i]] = i;
-
-    printf("it's working????");
 
     if(input_length % 4 != 0)
         return NULL;
@@ -56,7 +53,7 @@ unsigned char *base64_decode(const unsigned char *data, size_t input_length, siz
     if(data[input_length - 2] == '=')
         (*output_length)--;
 
-    unsigned char *decoded_data = malloc(*output_length);
+    char *decoded_data = malloc(*output_length);
     if(decoded_data == NULL)
         return NULL;
 
