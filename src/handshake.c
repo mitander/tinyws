@@ -7,7 +7,7 @@
 #include "include/sha1.h"
 #include "include/base64.h"
 
-int tws_handshake_accept(char *key, unsigned char **dst)
+int tws_handshake_accept(char *key, char **dst)
 {
     struct sha_ctx ctx;
     char *str = malloc(sizeof(char) * (TWS_KEY_MS_LEN + 1));
@@ -20,8 +20,8 @@ int tws_handshake_accept(char *key, unsigned char **dst)
     sha1_input(&ctx, (const uint8_t *) str, TWS_KEY_MS_LEN);
     sha1_result(&ctx, hash);
 
-    *dst = base64_encode(hash, 20, NULL);
-    *(*dst + strlen((const char *) *dst) - 1) = '\0';
+    size_t size = SHA1_HASH_SIZE;
+    *dst = base64_encode(hash, size, &size);
     free(str);
     return (0);
 }
@@ -29,7 +29,7 @@ int tws_handshake_accept(char *key, unsigned char **dst)
 int tws_handshake_response(char *req, char **res)
 {
     char *s;
-    unsigned char *accept;
+    char *accept;
 
     for(s = strtok(req, "\r\n"); s != NULL; s = strtok(NULL, "\r\n"))
         if(strstr(s, TWS_HS_REQ) != NULL)
