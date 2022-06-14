@@ -5,10 +5,10 @@
 
 enum
 {
-    SHA_ERR_OK = 0,
-    SHA_ERR_NULL,
-    SHA_ERR_INPUT_TOO_LONG,
-    SHA_ERR_STATE,
+    SHA1_ERR_OK,
+    SHA1_ERR_NULL,
+    SHA1_ERR_INPUT_TOO_LONG,
+    SHA1_ERR_STATE,
 };
 
 #define SHA1_HASH_SIZE 20
@@ -23,8 +23,7 @@ struct sha_ctx
     uint16_t msg_block_idx;
     uint8_t msg_block[64];
 
-    int count;
-    int corrupted;
+    int length;
 };
 
 int sha1_reset(struct sha_ctx *);

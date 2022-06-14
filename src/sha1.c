@@ -1,136 +1,113 @@
 #include "include/sha1.h"
+#include <stddef.h>
 
 #define SHA1_CIRCULAR_SHIFT(bits, word) (((word) << (bits)) | ((word) >> (32 - (bits))))
 
-void pad_msg(struct sha_ctx *);
-void process_msg_block(struct sha_ctx *);
+const uint32_t initial_hash[SHA1_HASH_SIZE / 4] = {0x67452301, 0xEFCDAB89, 0x98BADCFE, 0x10325476,
+                                                   0xC3D2E1F0};
+
+void msg_transform(struct sha_ctx *);
+void msg_process_block(struct sha_ctx *);
 
 int sha1_reset(struct sha_ctx *ctx)
 {
+    int i;
+
     if(!ctx)
     {
-        return SHA_ERR_NULL;
+        return SHA1_ERR_NULL;
+    }
+
+    for(i = 0; i < SHA1_HASH_SIZE / 4; i++)
+    {
+        ctx->hash[i] = initial_hash[i];
     }
 
     ctx->low_len = 0;
     ctx->high_len = 0;
     ctx->msg_block_idx = 0;
+    ctx->length = 0;
 
-    ctx->hash[0] = 0x67452301;
-    ctx->hash[1] = 0xEFCDAB89;
-    ctx->hash[2] = 0x98BADCFE;
-    ctx->hash[3] = 0x10325476;
-    ctx->hash[4] = 0xC3D2E1F0;
-
-    ctx->count = 0;
-    ctx->corrupted = 0;
-
-    return SHA_ERR_OK;
+    return SHA1_ERR_OK;
 }
 
-int sha1_result(struct sha_ctx *ctx, uint8_t Message_Digest[SHA1_HASH_SIZE])
+int sha1_result(struct sha_ctx *ctx, uint8_t msg_digest[SHA1_HASH_SIZE])
 {
     int i;
 
-    if(!ctx || !Message_Digest)
+    if(!ctx || !msg_digest)
     {
-        return SHA_ERR_NULL;
+        return SHA1_ERR_NULL;
     }
 
-    if(ctx->corrupted)
+    if(!ctx->length)
     {
-        return ctx->corrupted;
-    }
+        msg_transform(ctx);
 
-    if(!ctx->count)
-    {
-        pad_msg(ctx);
         for(i = 0; i < 64; ++i)
         {
             ctx->msg_block[i] = 0;
         }
+
         ctx->low_len = 0;
         ctx->high_len = 0;
-        ctx->count = 1;
+        ctx->length = 1;
     }
 
     for(i = 0; i < SHA1_HASH_SIZE; ++i)
     {
-        Message_Digest[i] = ctx->hash[i >> 2] >> 8 * (3 - (i & 0x03));
+        msg_digest[i] = ctx->hash[i >> 2] >> 8 * (3 - (i & 0x03));
     }
 
-    return SHA_ERR_OK;
+    return SHA1_ERR_OK;
 }
 
-int sha1_input(struct sha_ctx *ctx, const uint8_t *message_array, unsigned length)
+int sha1_input(struct sha_ctx *ctx, const uint8_t *msg_arr, unsigned len)
 {
-    if(!length)
+    if(!len)
     {
-        return SHA_ERR_OK;
+        return SHA1_ERR_OK;
     }
 
-    if(!ctx || !message_array)
+    if(!ctx || !msg_arr)
     {
-        return SHA_ERR_NULL;
+        return SHA1_ERR_NULL;
     }
 
-    if(ctx->count)
+    if(ctx->length)
     {
-        ctx->corrupted = SHA_ERR_STATE;
-
-        return SHA_ERR_STATE;
+        return SHA1_ERR_STATE;
     }
 
-    if(ctx->corrupted)
+    for(int i = 0; i < len; i++)
     {
-        return ctx->corrupted;
-    }
-    while(length-- && !ctx->corrupted)
-    {
-        ctx->msg_block[ctx->msg_block_idx++] = (*message_array & 0xFF);
-
+        ctx->msg_block[ctx->msg_block_idx++] = (*msg_arr & 0xFF);
         ctx->low_len += 8;
-        if(ctx->low_len == 0)
+
+        if(!ctx->low_len)
         {
             ctx->high_len++;
-            if(ctx->high_len == 0)
+            if(!ctx->high_len)
             {
-                // msg too long
-                ctx->corrupted = 1;
+                return SHA1_ERR_INPUT_TOO_LONG;
             }
         }
 
         if(ctx->msg_block_idx == 64)
         {
-            process_msg_block(ctx);
+            msg_process_block(ctx);
         }
 
-        message_array++;
+        msg_arr++;
     }
-
-    return SHA_ERR_OK;
+    return SHA1_ERR_OK;
 }
 
-void process_msg_block(struct sha_ctx *ctx)
+void msg_process_block(struct sha_ctx *ctx)
 {
-    const uint32_t K[] = {0x5A827999, 0x6ED9EBA1, 0x8F1BBCDC, 0xCA62C1D6};
-    int t;
-    uint32_t temp;
+    int i, sum;
     uint32_t W[80];
-    uint32_t A, B, C, D, E;
-
-    for(t = 0; t < 16; t++)
-    {
-        W[t] = ctx->msg_block[t * 4] << 24;
-        W[t] |= ctx->msg_block[t * 4 + 1] << 16;
-        W[t] |= ctx->msg_block[t * 4 + 2] << 8;
-        W[t] |= ctx->msg_block[t * 4 + 3];
-    }
-
-    for(t = 16; t < 80; t++)
-    {
-        W[t] = SHA1_CIRCULAR_SHIFT(1, W[t - 3] ^ W[t - 8] ^ W[t - 14] ^ W[t - 16]);
-    }
+    uint32_t A, B, C, D, E, tmp;
 
     A = ctx->hash[0];
     B = ctx->hash[1];
@@ -138,45 +115,46 @@ void process_msg_block(struct sha_ctx *ctx)
     D = ctx->hash[3];
     E = ctx->hash[4];
 
-    for(t = 0; t < 20; t++)
+    for(i = 0; i < 80; i++)
     {
-        temp = SHA1_CIRCULAR_SHIFT(5, A) + ((B & C) | ((~B) & D)) + E + W[t] + K[0];
-        E = D;
-        D = C;
-        C = SHA1_CIRCULAR_SHIFT(30, B);
-
-        B = A;
-        A = temp;
+        if(i < 16)
+        {
+            W[i] = ctx->msg_block[(ptrdiff_t) i * 4] << 24;
+            W[i] |= ctx->msg_block[i * 4 + 1] << 16;
+            W[i] |= ctx->msg_block[i * 4 + 2] << 8;
+            W[i] |= ctx->msg_block[i * 4 + 3];
+        }
+        else
+        {
+            W[i] = SHA1_CIRCULAR_SHIFT(1, W[i - 3] ^ W[i - 8] ^ W[i - 14] ^ W[i - 16]);
+        }
     }
 
-    for(t = 20; t < 40; t++)
+    for(i = 0; i < 80; i++)
     {
-        temp = SHA1_CIRCULAR_SHIFT(5, A) + (B ^ C ^ D) + E + W[t] + K[1];
-        E = D;
-        D = C;
-        C = SHA1_CIRCULAR_SHIFT(30, B);
-        B = A;
-        A = temp;
-    }
+        if(i < 20)
+        {
+            sum = ((B & C) | ((~B) & D)) + E + W[i] + 0x5A827999;
+        }
+        else if(i < 40)
+        {
+            sum = (B ^ C ^ D) + E + W[i] + 0x6ED9EBA1;
+        }
+        else if(i < 60)
+        {
+            sum = ((B & C) | (B & D) | (C & D)) + E + W[i] + 0x8F1BBCDC;
+        }
+        else
+        {
+            sum = (B ^ C ^ D) + E + W[i] + 0xCA62C1D6;
+        }
 
-    for(t = 40; t < 60; t++)
-    {
-        temp = SHA1_CIRCULAR_SHIFT(5, A) + ((B & C) | (B & D) | (C & D)) + E + W[t] + K[2];
+        tmp = SHA1_CIRCULAR_SHIFT(5, A) + sum;
         E = D;
         D = C;
         C = SHA1_CIRCULAR_SHIFT(30, B);
         B = A;
-        A = temp;
-    }
-
-    for(t = 60; t < 80; t++)
-    {
-        temp = SHA1_CIRCULAR_SHIFT(5, A) + (B ^ C ^ D) + E + W[t] + K[3];
-        E = D;
-        D = C;
-        C = SHA1_CIRCULAR_SHIFT(30, B);
-        B = A;
-        A = temp;
+        A = tmp;
     }
 
     ctx->hash[0] += A;
@@ -188,7 +166,7 @@ void process_msg_block(struct sha_ctx *ctx)
     ctx->msg_block_idx = 0;
 }
 
-void pad_msg(struct sha_ctx *ctx)
+void msg_transform(struct sha_ctx *ctx)
 {
     if(ctx->msg_block_idx > 55)
     {
@@ -198,8 +176,7 @@ void pad_msg(struct sha_ctx *ctx)
             ctx->msg_block[ctx->msg_block_idx++] = 0;
         }
 
-        process_msg_block(ctx);
-
+        msg_process_block(ctx);
         while(ctx->msg_block_idx < 56)
         {
             ctx->msg_block[ctx->msg_block_idx++] = 0;
@@ -223,5 +200,5 @@ void pad_msg(struct sha_ctx *ctx)
     ctx->msg_block[62] = ctx->low_len >> 8;
     ctx->msg_block[63] = ctx->low_len;
 
-    process_msg_block(ctx);
+    msg_process_block(ctx);
 }

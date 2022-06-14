@@ -92,9 +92,13 @@ static unsigned char *tws_receive_frame(unsigned char *frame, size_t length, int
         full_len = mask & 0x7F;
 
         if(full_len == 126)
+        {
             idx_mask = 4;
+        }
         else if(full_len == 127)
+        {
             idx_mask = 10;
+        }
 
         idx_data = idx_mask + 4;
         data_len = length - idx_data;
@@ -106,7 +110,9 @@ static unsigned char *tws_receive_frame(unsigned char *frame, size_t length, int
 
         msg = malloc(sizeof(unsigned char) * (data_len + 1));
         for(i = idx_data, j = 0; i < length; i++, j++)
+        {
             msg[j] = frame[i] ^ masks[j % 4];
+        }
 
         msg[j] = '\0';
     }
@@ -130,11 +136,13 @@ char *tws_get_address(int sockfd)
 
     addr_size = sizeof(struct sockaddr_in);
     if(getpeername(sockfd, (struct sockaddr *) &addr, &addr_size) < 0)
+    {
         return NULL;
+    }
 
     client = malloc(sizeof(char) * 20);
     strcpy(client, inet_ntoa(addr.sin_addr));
-    return (client);
+    return client;
 }
 
 
@@ -163,23 +171,22 @@ static void *tws_connect(void *vsock)
         }
 
         msg = tws_receive_frame(frame, n, &type);
-
         if(msg == NULL)
         {
             printf("Received invalid frame from client %d\n", sock);
         }
 
-
-        switch(type)
+        if(type == TWS_FRAME_OP_TXT)
         {
-            case TWS_FRAME_OP_TXT:
-                printf("Received text frame\n");
-                g_events.msg_cb(sock, msg);
-            case TWS_FRAME_OP_CLOSE:
-                printf("Received close frame\n");
-                g_events.close_cb(sock);
-                goto closed;
-            default:; // do nothing
+            printf("Received text frame\n");
+            g_events.msg_cb(sock, msg);
+        }
+
+        if(type == TWS_FRAME_OP_CLOSE)
+        {
+            printf("Received close frame: %d\n", type);
+            g_events.close_cb(sock);
+            goto closed;
         }
     }
 
@@ -194,6 +201,7 @@ int tws_socket_listen(struct tws_events *events, int port)
     int sock;
     struct sockaddr_in server;
     struct sockaddr_in client;
+    pthread_t client_thread;
     int len;
 
     len = sizeof(struct sockaddr_in);
@@ -201,10 +209,13 @@ int tws_socket_listen(struct tws_events *events, int port)
     if(events == NULL)
     {
         printf("Events is NULL\n");
+        exit(-1);
     }
+
     if(port <= 0 || port > MAX_PORT)
     {
         printf("Invalid port: %d. Port must be in range 1-%d\n", port, MAX_PORT);
+        exit(-1);
     }
 
     // copy events
@@ -213,11 +224,17 @@ int tws_socket_listen(struct tws_events *events, int port)
     // create listen socket
     listen_sock = socket(AF_INET, SOCK_STREAM, 0);
     if(listen_sock < 0)
+    {
         perror("Could not create socket\n");
+        exit(-1);
+    }
 
     // reuse previous address
     if(setsockopt(listen_sock, SOL_SOCKET, SO_REUSEADDR, &(int){1}, sizeof(int)) < 0)
+    {
         perror("Could not reuse address\n");
+        exit(-1);
+    }
 
     // setup sin
     server.sin_family = AF_INET;
@@ -226,7 +243,10 @@ int tws_socket_listen(struct tws_events *events, int port)
 
     // bind socket
     if(bind(listen_sock, (struct sockaddr *) &server, sizeof(server)) < 0)
+    {
         perror("Bind failed");
+        exit(-1);
+    }
 
     // listen to socket
     listen(listen_sock, MAX_CLIENTS);
@@ -243,10 +263,12 @@ int tws_socket_listen(struct tws_events *events, int port)
             exit(-1);
         }
 
-        pthread_t client_thread;
         // TODO: remove int to pointer cast
         if(pthread_create(&client_thread, NULL, tws_connect, (void *) (intptr_t) sock) != 0)
+        {
             perror("Could not create client thread\n");
+            exit(-1);
+        }
 
         pthread_detach(client_thread);
     }
