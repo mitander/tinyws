@@ -132,7 +132,6 @@ char *tws_get_address(int sockfd)
 {
     struct sockaddr_in addr;
     socklen_t addr_size;
-    char *client;
 
     addr_size = sizeof(struct sockaddr_in);
     if(getpeername(sockfd, (struct sockaddr *) &addr, &addr_size) < 0)
@@ -140,11 +139,8 @@ char *tws_get_address(int sockfd)
         return NULL;
     }
 
-    client = malloc(sizeof(char) * 20);
-    strcpy(client, inet_ntoa(addr.sin_addr));
-    return client;
+    return inet_ntoa(addr.sin_addr);
 }
-
 
 static void *tws_connect(void *vsock)
 {

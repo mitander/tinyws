@@ -9,26 +9,25 @@ void open_cb(int fd)
     char *addr;
     addr = tws_get_address(fd);
     printf("Connection opened. Client: %d - Addr: %s\n", fd, addr);
-    free(addr);
 }
 
 void close_cb(int fd)
 {
     char *addr;
+
     addr = tws_get_address(fd);
     printf("Connection closed. Client: %d - Addr: %s\n", fd, addr);
-    free(addr);
 }
 
 void msg_cb(int fd, unsigned char *msg)
 {
     char *addr;
+
     addr = tws_get_address(fd);
     printf("Received message from %s/%d: %s\n", addr, fd, msg);
 
     tws_send_frame(fd, (char *) msg);
 
-    free(addr);
     free(msg);
 }
 
