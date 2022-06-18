@@ -208,6 +208,13 @@ int tws_socket_listen(struct tws_events *events, int port)
         exit(-1);
     }
 
+    if(!events->close_cb || !events->msg_cb || !events->open_cb)
+    {
+        printf("Callback functions need to be set. close_cb=%d msg_cb=%d open_cb=%d\n",
+               !(events->close_cb == NULL), !(events->msg_cb == NULL), !(events->open_cb == NULL));
+        exit(-1);
+    }
+
     if(port <= 0 || port > MAX_PORT)
     {
         printf("Invalid port: %d. Port must be in range 1-%d\n", port, MAX_PORT);

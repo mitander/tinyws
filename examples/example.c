@@ -33,7 +33,8 @@ void msg_cb(int fd, unsigned char *msg)
 
 int main()
 {
-    struct tws_events evs;
+    // TODO: is it possible to use default values here instead?
+    struct tws_events evs = {NULL, NULL, NULL};
     evs.open_cb = &open_cb;
     evs.close_cb = &close_cb;
     evs.msg_cb = &msg_cb;
