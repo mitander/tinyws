@@ -41,11 +41,11 @@
 #define TWS_FRAME_MAX_LEN (16 * 1024 * 1024)
 
 typedef struct tws_client tws_client;
-typedef struct tws_socket tws_socket;
+typedef struct tws_server tws_server;
 
 struct tws_client
 {
-    tws_socket *ws;
+    tws_server *ws;
     tws_client *prev;
     tws_client *next;
 
@@ -57,7 +57,7 @@ struct tws_client
     void *data;
 };
 
-struct tws_socket
+struct tws_server
 {
     int port;
     tws_client *current;
@@ -69,14 +69,14 @@ struct tws_socket
 };
 
 
-TWS_EXPORT tws_socket *tws_socket_init(int port);
+TWS_EXPORT tws_server *tws_server_init(int port);
 TWS_EXPORT tws_client *tws_client_init(void);
 
 TWS_EXPORT int tws_handshake_accept(char *key, char **dst);
 TWS_EXPORT int tws_handshake_response(char *req, char **res);
 
 TWS_EXPORT int tws_send_frame(int fd, char *msg);
-TWS_EXPORT int tws_socket_listen(tws_socket *socket);
+TWS_EXPORT int tws_listen(tws_server *socket);
 TWS_EXPORT char *tws_get_address(int fd);
 
 #endif // TWS_TWS_H

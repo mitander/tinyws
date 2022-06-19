@@ -33,11 +33,11 @@ void msg_cb(int fd, unsigned char *msg)
 
 int main()
 {
-    tws_socket *ws = tws_socket_init(8080);
+    tws_server *ws = tws_server_init(8080);
     ws->open_cb = &open_cb;
     ws->close_cb = &close_cb;
     ws->msg_cb = &msg_cb;
-    tws_socket_listen(ws);
+    tws_listen(ws);
 
     return 0;
 }
