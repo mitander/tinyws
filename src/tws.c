@@ -175,14 +175,14 @@ static void *tws_connect(void *vsock)
     int sock;
     size_t n;
     char *res;
-    unsigned char frame[MSG_LEN];
+    unsigned char frame[TWS_MSG_LEN];
     unsigned char *msg;
     int type;
     int hs_done;
 
     sock = (int) (intptr_t) vsock;
 
-    while((n = read(sock, frame, sizeof(unsigned char) * MSG_LEN)) > 0)
+    while((n = read(sock, frame, sizeof(unsigned char) * TWS_MSG_LEN)) > 0)
     {
         if(!hs_done)
         {
@@ -241,9 +241,9 @@ int tws_listen(tws_server *server)
         exit(-1);
     }
 
-    if(server->port <= 0 || server->port > MAX_PORT)
+    if(server->port <= 0 || server->port > TWS_MAX_PORT)
     {
-        printf("Invalid port: %d. Port must be in range 1-%d\n", server->port, MAX_PORT);
+        printf("Invalid port: %d. Port must be in range 1-%d\n", server->port, TWS_MAX_PORT);
         exit(-1);
     }
 
@@ -273,7 +273,7 @@ int tws_listen(tws_server *server)
         exit(-1);
     }
 
-    listen(server_sock, MAX_CLIENTS);
+    listen(server_sock, TWS_MAX_CLIENTS);
     client_len = sizeof(client_addr);
 
     printf("Listening for incoming connections on port %d\n", server->port);
