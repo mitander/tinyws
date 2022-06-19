@@ -4,36 +4,37 @@
 #include <unistd.h>
 #include <tws/tws.h>
 
-void open_cb(int fd)
+void open_cb(tws_client_t *client)
 {
     char *addr;
-    addr = tws_get_address(fd);
-    printf("Connection opened. Client: %d - Addr: %s\n", fd, addr);
+    addr = tws_get_address(client->socket);
+    printf("Connection opened. Client: %d - Addr: %s\n", client->socket, addr);
+    printf("open cb\n");
 }
 
-void close_cb(int fd)
+void close_cb(tws_client_t *client)
 {
     char *addr;
-
-    addr = tws_get_address(fd);
-    printf("Connection closed. Client: %d - Addr: %s\n", fd, addr);
+    addr = tws_get_address(client->socket);
+    printf("Connection closed. Client: %d - Addr: %s\n", client->socket, addr);
+    printf("close cb\n");
 }
 
-void msg_cb(int fd, unsigned char *msg)
+void msg_cb(tws_client_t *client, unsigned char *msg)
 {
     char *addr;
+    addr = tws_get_address(client->socket);
+    printf("Received message from %s/%d: %s\n", addr, client->socket, msg);
 
-    addr = tws_get_address(fd);
-    printf("Received message from %s/%d: %s\n", addr, fd, msg);
-
-    tws_send_frame(fd, (char *) msg);
-
+    tws_send_frame(client, (char *) msg);
     free(msg);
+
+    printf("msg cb\n");
 }
 
 int main()
 {
-    tws_server *ws = tws_server_init(8080);
+    tws_server_t *ws = tws_server_init(8080);
     ws->open_cb = &open_cb;
     ws->close_cb = &close_cb;
     ws->msg_cb = &msg_cb;

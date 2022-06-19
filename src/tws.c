@@ -5,10 +5,10 @@
 #include <string.h>
 #include <unistd.h>
 #include <pthread.h>
+#include <signal.h>
+#include <errno.h>
 
 #include "tws/tws.h"
-
-tws_server_t g_server;
 
 unsigned long long clients_id = 0;
 
@@ -38,14 +38,13 @@ tws_client_t *tws_client_init()
     return client;
 }
 
-int tws_send_frame(int fd, char *msg)
+int tws_send_frame(tws_client_t *client, char *msg)
 {
     unsigned char *res;
     unsigned char frame[10];
     uint8_t idx_data;
     uint64_t msg_len;
     int idx_res;
-    int output;
 
     msg_len = strlen(msg);
     frame[0] = (TWS_FIN | TWS_FRAME_OP_TXT);
@@ -93,14 +92,21 @@ int tws_send_frame(int fd, char *msg)
     }
 
     res[idx_res] = '\0';
-    output = write(fd, res, idx_res);
+
+    // TODO: it's failing when writing to socket, not sure why.
+    int err = write(client->socket, res, idx_res);
+    if(err != 0)
+    {
+        printf("Could not write to socket [%d]: %s\n", err, strerror(errno));
+        return -1;
+    }
 
     free(res);
 
-    return output;
+    return 0;
 }
 
-static unsigned char *tws_receive_frame(unsigned char *frame, size_t length, int *type)
+static unsigned char *tws_receive_frame(unsigned char *frame, size_t len, int *type)
 {
     unsigned char *msg;
     uint8_t mask;
@@ -113,45 +119,47 @@ static unsigned char *tws_receive_frame(unsigned char *frame, size_t length, int
 
     msg = NULL;
 
-    if(frame[0] == (TWS_FIN | TWS_FRAME_OP_TXT))
+    printf("Frame length: %lu\n", strlen((char *) frame));
+
+    switch(frame[0])
     {
-        *type = TWS_FRAME_OP_TXT;
-        idx_mask = 2;
-        mask = frame[1];
-        full_len = mask & 0x7F;
+        case(TWS_FIN | TWS_FRAME_OP_TXT):
+            *type = TWS_FRAME_OP_TXT;
+            mask = frame[1];
+            full_len = mask & 0x7F;
 
-        if(full_len == 126)
-        {
-            idx_mask = 4;
-        }
-        else if(full_len == 127)
-        {
-            idx_mask = 10;
-        }
 
-        idx_data = idx_mask + 4;
-        data_len = length - idx_data;
+            switch(full_len)
+            {
+                case 126:
+                    idx_mask = 4;
+                case 127:
+                    idx_mask = 10;
+                default:
+                    idx_mask = 2;
+            }
 
-        masks[0] = frame[idx_mask + 0];
-        masks[1] = frame[idx_mask + 1];
-        masks[2] = frame[idx_mask + 2];
-        masks[3] = frame[idx_mask + 3];
+            idx_data = idx_mask + 4;
+            data_len = len - idx_data;
 
-        msg = malloc(sizeof(unsigned char) * (data_len + 1));
-        for(i = idx_data, j = 0; i < length; i++, j++)
-        {
-            msg[j] = frame[i] ^ masks[j % 4];
-        }
+            masks[0] = frame[idx_mask + 0];
+            masks[1] = frame[idx_mask + 1];
+            masks[2] = frame[idx_mask + 2];
+            masks[3] = frame[idx_mask + 3];
 
-        msg[j] = '\0';
-    }
-    else if(frame[0] == (TWS_FIN | TWS_FRAME_OP_CLOSE))
-    {
-        *type = TWS_FRAME_OP_CLOSE;
-    }
-    else
-    {
-        *type = frame[0] & 0x0F;
+            msg = malloc(sizeof(unsigned char) * (data_len + 1));
+            for(i = idx_data, j = 0; i < len; i++, j++)
+            {
+                msg[j] = frame[i] ^ masks[j % 4];
+            }
+
+            msg[j] = '\0';
+
+        case(TWS_FIN | TWS_FRAME_OP_CLOSE):
+            *type = TWS_FRAME_OP_CLOSE;
+
+        default:
+            *type = frame[0] & 0x0F;
     }
 
     return msg;
@@ -172,52 +180,84 @@ char *tws_get_address(int sockfd)
     return inet_ntoa(addr.sin_addr);
 }
 
-static void *tws_connect(void *vsock)
+static void *tws_connect(tws_client_t *client)
 {
-    int sock;
     size_t n;
     char *res;
     unsigned char frame[TWS_MSG_LEN];
     unsigned char *msg;
     int type;
     int hs_done;
+    int sock;
+    char str_addr[INET6_ADDRSTRLEN + 1];
 
-    sock = (int) (intptr_t) vsock;
+    inet_ntop(AF_INET, (void *) &client->address, str_addr, INET_ADDRSTRLEN);
 
-    while((n = read(sock, frame, sizeof(unsigned char) * TWS_MSG_LEN)) > 0)
+    if(client == NULL)
+    {
+        printf("Client is null\n");
+        return NULL;
+    }
+
+    if(client->ws == NULL)
+    {
+        printf("ws is null\n");
+        return NULL;
+    }
+
+
+    sock = (int) (intptr_t) client->socket;
+
+    while((n = read(sock, frame, sizeof(frame))) > 0)
     {
         if(!hs_done)
         {
-            tws_handshake_response((char *) frame, &res);
+            if(tws_handshake_response((char *) frame, &res) != 0)
+            {
+                printf("Handshake reponse failed\n");
+                return NULL;
+            }
+
             hs_done = 1;
             n = write(sock, res, strlen(res));
-            g_server.open_cb(sock);
+            client->ws->open_cb(client);
             free(res);
         }
 
-        msg = tws_receive_frame(frame, n, &type);
-        if(msg == NULL)
+        if((msg = tws_receive_frame(frame, n, &type)) == NULL)
         {
             printf("Invalid frame from client %d\n", sock);
         }
 
-        if(type == TWS_FRAME_OP_TXT)
+        switch(type)
         {
-            printf("Text frame\n");
-            g_server.msg_cb(sock, msg);
-        }
+            case TWS_FRAME_OP_TXT:
+                printf("Text frame\n");
+                client->ws->msg_cb(client, msg);
 
-        if(type == TWS_FRAME_OP_CLOSE)
-        {
-            printf("Close frame: %d\n", type);
-            g_server.close_cb(sock);
-            goto closed;
+            case TWS_FRAME_OP_CLOSE:
+                printf("Close frame: %d\n", type);
+                client->ws->close_cb(client);
+                goto closed;
         }
     }
 
 closed:
     close(sock);
-    return vsock;
+    return NULL;
+}
+
+
+static void broken_pipe_handler(int sig)
+{
+    printf("Broken pipe.\n");
+}
+
+static void *client_handler(void *client)
+{
+    sigaction(SIGPIPE, &(struct sigaction){broken_pipe_handler}, NULL);
+    tws_connect(client);
+    return NULL;
 }
 
 int tws_listen(tws_server_t *server)
@@ -229,6 +269,8 @@ int tws_listen(tws_server_t *server)
     struct sockaddr_in client_addr;
     pthread_t client_thread;
     char addr_len[INET6_ADDRSTRLEN + 1];
+
+    sigaction(SIGPIPE, &(struct sigaction){broken_pipe_handler}, NULL);
 
     if(server == NULL)
     {
@@ -248,8 +290,6 @@ int tws_listen(tws_server_t *server)
         printf("Invalid port: %d. Port must be in range 1-%d\n", server->port, TWS_MAX_PORT);
         exit(-1);
     }
-
-    memcpy(&g_server, server, sizeof(tws_server_t));
 
     server_addr.sin_family = AF_INET;
     server_addr.sin_addr.s_addr = INADDR_ANY;
@@ -310,11 +350,11 @@ int tws_listen(tws_server_t *server)
         }
 
         server->current = client;
+        server->open_cb(client);
 
         printf("Client connected: #%d (%s)\n", client->id, addr_len);
 
-        // TODO: remove int to pointer cast
-        if(pthread_create(&client_thread, NULL, tws_connect, (void *) (intptr_t) client_sock) != 0)
+        if(pthread_create(&client_thread, NULL, &client_handler, (void *) client))
         {
             perror("Could not create client thread\n");
             exit(-1);

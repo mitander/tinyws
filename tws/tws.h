@@ -64,9 +64,9 @@ struct tws_server
     tws_client_t *current;
     tws_client_t *clients;
 
-    void (*open_cb)(int);
-    void (*close_cb)(int);
-    void (*msg_cb)(int, unsigned char *);
+    void (*open_cb)(tws_client_t *client);
+    void (*close_cb)(tws_client_t *client);
+    void (*msg_cb)(tws_client_t *client, unsigned char *msg);
 };
 
 
@@ -76,7 +76,7 @@ TWS_EXPORT tws_client_t *tws_client_init(void);
 TWS_EXPORT int tws_handshake_accept(char *key, char **dst);
 TWS_EXPORT int tws_handshake_response(char *req, char **res);
 
-TWS_EXPORT int tws_send_frame(int fd, char *msg);
+TWS_EXPORT int tws_send_frame(tws_client_t *client, char *msg);
 TWS_EXPORT int tws_listen(tws_server_t *socket);
 TWS_EXPORT char *tws_get_address(int fd);
 

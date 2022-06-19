@@ -26,7 +26,7 @@ int tws_handshake_accept(char *key, char **dst)
     }
 
     strncpy(str, key, TWS_KEY_LEN);
-    strcat(str, MAGIC_STRING);
+    strcat(str, TWS_MAGIC_STRING);
 
     if((err = sha1_reset(&ctx)))
     {
@@ -67,6 +67,7 @@ int tws_handshake_response(char *req, char **res)
 
     if(str == NULL)
     {
+        printf("str is null\n");
         return -1;
     }
 
