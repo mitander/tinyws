@@ -9,14 +9,13 @@
 #include "tws/tws.h"
 
 // global socket
-struct tws_socket g_socket;
+tws_socket g_socket;
 
 unsigned long long clients_id = 0;
 
-struct tws_socket *tws_socket_init(int port)
+tws_socket *tws_socket_init(int port)
 {
-    struct tws_socket *socket = malloc(sizeof(struct tws_socket));
-
+    tws_socket *socket = malloc(sizeof(tws_socket));
     socket->port = port;
     socket->open_cb = NULL;
     socket->msg_cb = NULL;
@@ -27,9 +26,9 @@ struct tws_socket *tws_socket_init(int port)
     return socket;
 }
 
-struct tws_client *tws_client_init()
+tws_client *tws_client_init()
 {
-    struct tws_client *client = malloc(sizeof(struct tws_client));
+    tws_client *client = malloc(sizeof(tws_client));
     client->socket = 0;
     client->ws_key = NULL;
     client->address = 0;
@@ -220,7 +219,7 @@ closed:
     return vsock;
 }
 
-int tws_socket_listen(struct tws_socket *sock)
+int tws_socket_listen(tws_socket *sock)
 {
     int server_sock;
     int client_sock;
@@ -248,7 +247,7 @@ int tws_socket_listen(struct tws_socket *sock)
         exit(-1);
     }
 
-    memcpy(&g_socket, sock, sizeof(struct tws_socket));
+    memcpy(&g_socket, sock, sizeof(tws_socket));
 
     server_addr.sin_family = AF_INET;
     server_addr.sin_addr.s_addr = INADDR_ANY;
@@ -292,7 +291,7 @@ int tws_socket_listen(struct tws_socket *sock)
 
         inet_ntop(AF_INET, (void *) &client_addr.sin_addr, str_addr, INET_ADDRSTRLEN);
 
-        struct tws_client *client = tws_client_init();
+        tws_client *client = tws_client_init();
         client->id = ++clients_id;
         client->ws = sock;
         client->server_socket = server_sock;
