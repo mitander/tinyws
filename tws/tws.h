@@ -41,14 +41,14 @@
 #define TWS_KEY_MS_LEN (TWS_KEY_LEN + TWS_MS_LEN)
 
 
-typedef struct tws_client tws_client;
-typedef struct tws_server tws_server;
+typedef struct tws_client tws_client_t;
+typedef struct tws_server tws_server_t;
 
 struct tws_client
 {
-    tws_server *ws;
-    tws_client *prev;
-    tws_client *next;
+    tws_server_t *ws;
+    tws_client_t *prev;
+    tws_client_t *next;
 
     int id;
     int socket;
@@ -61,8 +61,8 @@ struct tws_client
 struct tws_server
 {
     int port;
-    tws_client *current;
-    tws_client *clients;
+    tws_client_t *current;
+    tws_client_t *clients;
 
     void (*open_cb)(int);
     void (*close_cb)(int);
@@ -70,14 +70,14 @@ struct tws_server
 };
 
 
-TWS_EXPORT tws_server *tws_server_init(int port);
-TWS_EXPORT tws_client *tws_client_init(void);
+TWS_EXPORT tws_server_t *tws_server_init(int port);
+TWS_EXPORT tws_client_t *tws_client_init(void);
 
 TWS_EXPORT int tws_handshake_accept(char *key, char **dst);
 TWS_EXPORT int tws_handshake_response(char *req, char **res);
 
 TWS_EXPORT int tws_send_frame(int fd, char *msg);
-TWS_EXPORT int tws_listen(tws_server *socket);
+TWS_EXPORT int tws_listen(tws_server_t *socket);
 TWS_EXPORT char *tws_get_address(int fd);
 
 #endif // TWS_TWS_H

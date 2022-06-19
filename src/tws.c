@@ -8,13 +8,13 @@
 
 #include "tws/tws.h"
 
-tws_server g_server;
+tws_server_t g_server;
 
 unsigned long long clients_id = 0;
 
-tws_server *tws_server_init(int port)
+tws_server_t *tws_server_init(int port)
 {
-    tws_server *socket = malloc(sizeof(tws_server));
+    tws_server_t *socket = malloc(sizeof(tws_server_t));
     socket->port = port;
     socket->open_cb = NULL;
     socket->msg_cb = NULL;
@@ -25,9 +25,9 @@ tws_server *tws_server_init(int port)
     return socket;
 }
 
-tws_client *tws_client_init()
+tws_client_t *tws_client_init()
 {
-    tws_client *client = malloc(sizeof(tws_client));
+    tws_client_t *client = malloc(sizeof(tws_client_t));
     client->socket = 0;
     client->ws_key = NULL;
     client->address = 0;
@@ -47,7 +47,7 @@ int tws_send_frame(int fd, char *msg)
     int idx_res;
     int output;
 
-    msg_len = strlen((char *) msg);
+    msg_len = strlen(msg);
     frame[0] = (TWS_FIN | TWS_FRAME_OP_TXT);
 
     if(msg_len <= 125)
@@ -94,7 +94,9 @@ int tws_send_frame(int fd, char *msg)
 
     res[idx_res] = '\0';
     output = write(fd, res, idx_res);
+
     free(res);
+
     return output;
 }
 
@@ -218,7 +220,7 @@ closed:
     return vsock;
 }
 
-int tws_listen(tws_server *server)
+int tws_listen(tws_server_t *server)
 {
     int server_sock;
     int client_sock;
@@ -247,7 +249,7 @@ int tws_listen(tws_server *server)
         exit(-1);
     }
 
-    memcpy(&g_server, server, sizeof(tws_server));
+    memcpy(&g_server, server, sizeof(tws_server_t));
 
     server_addr.sin_family = AF_INET;
     server_addr.sin_addr.s_addr = INADDR_ANY;
@@ -290,7 +292,7 @@ int tws_listen(tws_server *server)
 
         inet_ntop(AF_INET, (void *) &client_addr.sin_addr, addr_len, INET_ADDRSTRLEN);
 
-        tws_client *client = tws_client_init();
+        tws_client_t *client = tws_client_init();
         client->id = ++clients_id;
         client->ws = server;
         client->server_socket = server_sock;
