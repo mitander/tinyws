@@ -11,16 +11,33 @@
 // global socket
 struct tws_socket g_socket;
 
+unsigned long long clients_id = 0;
+
 struct tws_socket *tws_socket_init(int port)
 {
     struct tws_socket *socket = malloc(sizeof(struct tws_socket));
 
+    socket->port = port;
     socket->open_cb = NULL;
     socket->msg_cb = NULL;
     socket->close_cb = NULL;
-    socket->port = port;
+    socket->clients = NULL;
+    socket->current = NULL;
 
     return socket;
+}
+
+struct tws_client *tws_client_init()
+{
+    struct tws_client *client = malloc(sizeof(struct tws_client));
+    client->socket = 0;
+    client->ws_key = NULL;
+    client->address = 0;
+    client->data = NULL;
+    client->next = NULL;
+    client->prev = NULL;
+
+    return client;
 }
 
 int tws_send_frame(int fd, char *msg)
@@ -208,8 +225,8 @@ int tws_socket_listen(struct tws_socket *sock)
     int server_sock;
     int client_sock;
     int client_len;
-    struct sockaddr_in server;
-    struct sockaddr_in client;
+    struct sockaddr_in server_addr;
+    struct sockaddr_in client_addr;
     pthread_t client_thread;
 
     if(sock == NULL)
@@ -233,9 +250,9 @@ int tws_socket_listen(struct tws_socket *sock)
 
     memcpy(&g_socket, sock, sizeof(struct tws_socket));
 
-    server.sin_family = AF_INET;
-    server.sin_addr.s_addr = INADDR_ANY;
-    server.sin_port = htons(sock->port);
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_addr.s_addr = INADDR_ANY;
+    server_addr.sin_port = htons(sock->port);
 
     server_sock = socket(AF_INET, SOCK_STREAM, 0);
     if(server_sock < 0)
@@ -251,25 +268,50 @@ int tws_socket_listen(struct tws_socket *sock)
     }
 
 
-    if(bind(server_sock, (struct sockaddr *) &server, sizeof(server)) < 0)
+    if(bind(server_sock, (struct sockaddr *) &server_addr, sizeof(server_addr)) < 0)
     {
         perror("Bind failed");
         exit(-1);
     }
 
     listen(server_sock, MAX_CLIENTS);
-    client_len = sizeof(client);
+    client_len = sizeof(client_addr);
+    char str_addr[INET6_ADDRSTRLEN + 1];
 
     printf("Listening for incoming connections on port %d\n", sock->port);
 
     for(;;)
     {
-        client_sock = accept(server_sock, (struct sockaddr *) &client, (socklen_t *) &client_len);
+        client_sock =
+          accept(server_sock, (struct sockaddr *) &client_addr, (socklen_t *) &client_len);
         if(client_sock < 0)
         {
             perror("Could not accept connection\n");
             exit(-1);
         }
+
+        inet_ntop(AF_INET, (void *) &client_addr.sin_addr, str_addr, INET_ADDRSTRLEN);
+
+        struct tws_client *client = tws_client_init();
+        client->id = ++clients_id;
+        client->ws = sock;
+        client->server_socket = server_sock;
+        client->socket = client_sock;
+        client->address = client_addr.sin_addr.s_addr;
+
+        if(!sock->clients)
+        {
+            sock->clients = client;
+        }
+        else
+        {
+            client->prev = sock->current;
+            sock->current->next = client;
+        }
+
+        sock->current = client;
+
+        printf("Client connected: #%d (%s)\n", client->id, str_addr);
 
         // TODO: remove int to pointer cast
         if(pthread_create(&client_thread, NULL, tws_connect, (void *) (intptr_t) client_sock) != 0)

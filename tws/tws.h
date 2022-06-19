@@ -40,9 +40,25 @@
 #define TWS_FRAME_OP_UNSUPPORTED 0xF
 #define TWS_FRAME_MAX_LEN (16 * 1024 * 1024)
 
+struct tws_client
+{
+    struct tws_socket *ws;
+    struct tws_client *prev;
+    struct tws_client *next;
+
+    int id;
+    int socket;
+    int server_socket;
+    int address;
+    char *ws_key;
+    void *data;
+};
+
 struct tws_socket
 {
     int port;
+    struct tws_client *current;
+    struct tws_client *clients;
 
     void (*open_cb)(int);
     void (*close_cb)(int);
@@ -50,6 +66,8 @@ struct tws_socket
 };
 
 TWS_EXPORT struct tws_socket *tws_socket_init(int port);
+TWS_EXPORT struct tws_client *tws_client_init(void);
+
 TWS_EXPORT int tws_handshake_accept(char *key, char **dst);
 TWS_EXPORT int tws_handshake_response(char *req, char **res);
 
