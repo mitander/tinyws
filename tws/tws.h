@@ -40,18 +40,21 @@
 #define TWS_FRAME_OP_UNSUPPORTED 0xF
 #define TWS_FRAME_MAX_LEN (16 * 1024 * 1024)
 
-struct tws_events
+struct tws_socket
 {
+    int port;
+
     void (*open_cb)(int);
     void (*close_cb)(int);
     void (*msg_cb)(int, unsigned char *);
 };
 
+TWS_EXPORT struct tws_socket *tws_socket_init(int port);
 TWS_EXPORT int tws_handshake_accept(char *key, char **dst);
 TWS_EXPORT int tws_handshake_response(char *req, char **res);
 
 TWS_EXPORT int tws_send_frame(int fd, char *msg);
-TWS_EXPORT int tws_socket_listen(struct tws_events *events, int port);
+TWS_EXPORT int tws_socket_listen(struct tws_socket *socket);
 TWS_EXPORT char *tws_get_address(int fd);
 
 #endif // TWS_TWS_H

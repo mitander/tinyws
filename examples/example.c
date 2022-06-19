@@ -33,12 +33,11 @@ void msg_cb(int fd, unsigned char *msg)
 
 int main()
 {
-    // TODO: is it possible to use default values here instead?
-    struct tws_events evs = {NULL, NULL, NULL};
-    evs.open_cb = &open_cb;
-    evs.close_cb = &close_cb;
-    evs.msg_cb = &msg_cb;
-    tws_socket_listen(&evs, 8080);
+    struct tws_socket *evs = tws_socket_init(8080);
+    evs->open_cb = &open_cb;
+    evs->close_cb = &close_cb;
+    evs->msg_cb = &msg_cb;
+    tws_socket_listen(evs);
 
     return 0;
 }
