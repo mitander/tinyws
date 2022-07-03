@@ -38,7 +38,7 @@ tws_client_t *tws_client_init()
     return client;
 }
 
-int tws_send_frame(tws_client_t *client, char *msg)
+int tws_send_frame(tws_client_t *client, unsigned char *msg)
 {
     unsigned char *res;
     unsigned char frame[10];
@@ -46,7 +46,7 @@ int tws_send_frame(tws_client_t *client, char *msg)
     uint64_t msg_len;
     int idx_res;
 
-    msg_len = strlen(msg);
+    msg_len = strlen((char *) msg);
     frame[0] = (TWS_FIN | TWS_FRAME_OP_TXT);
 
     if(msg_len <= 125)
