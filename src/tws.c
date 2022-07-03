@@ -201,7 +201,7 @@ static void *tws_connect(tws_client_t *client)
 
     if(client->ws == NULL)
     {
-        printf("ws is null\n");
+        printf("Client ws is null\n");
         return NULL;
     }
 
@@ -274,7 +274,7 @@ int tws_listen(tws_server_t *server)
 
     if(server == NULL)
     {
-        printf("tws_server is null\n");
+        printf("Server is null\n");
         exit(-1);
     }
 

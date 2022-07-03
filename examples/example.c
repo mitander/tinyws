@@ -9,7 +9,6 @@ void open_cb(tws_client_t *client)
     char *addr;
     addr = tws_get_address(client->socket);
     printf("Connection opened. Client: %d - Addr: %s\n", client->socket, addr);
-    printf("open cb\n");
 }
 
 void close_cb(tws_client_t *client)
@@ -17,7 +16,6 @@ void close_cb(tws_client_t *client)
     char *addr;
     addr = tws_get_address(client->socket);
     printf("Connection closed. Client: %d - Addr: %s\n", client->socket, addr);
-    printf("close cb\n");
 }
 
 void msg_cb(tws_client_t *client, unsigned char *msg)
@@ -28,8 +26,6 @@ void msg_cb(tws_client_t *client, unsigned char *msg)
 
     tws_send_frame(client, (char *) msg);
     free(msg);
-
-    printf("msg cb\n");
 }
 
 int main()
