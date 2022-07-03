@@ -22,7 +22,7 @@ void msg_cb(tws_client_t *client, unsigned char *msg)
 {
     char *addr;
     addr = tws_get_address(client->socket);
-    printf("Received message from %s/%d: %s\n", addr, client->socket, msg);
+    printf("Received message from %s/%d: %s", addr, client->socket, msg);
 
     tws_send_frame(client, (char *) msg);
     free(msg);

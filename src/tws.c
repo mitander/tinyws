@@ -93,13 +93,7 @@ int tws_send_frame(tws_client_t *client, char *msg)
 
     res[idx_res] = '\0';
 
-    // TODO: it's failing when writing to socket, not sure why.
-    int err = write(client->socket, res, idx_res);
-    if(err != 0)
-    {
-        printf("Could not write to socket [%d]: %s\n", err, strerror(errno));
-        return -1;
-    }
+    write(client->socket, res, idx_res);
 
     free(res);
 
@@ -205,7 +199,6 @@ static void *tws_connect(tws_client_t *client)
         return NULL;
     }
 
-
     sock = (int) (intptr_t) client->socket;
 
     while((n = read(sock, frame, sizeof(frame))) > 0)
@@ -229,16 +222,17 @@ static void *tws_connect(tws_client_t *client)
             printf("Invalid frame from client %d\n", sock);
         }
 
-        switch(type)
+        if(type == TWS_FRAME_OP_TXT)
         {
-            case TWS_FRAME_OP_TXT:
-                printf("Text frame\n");
-                client->ws->msg_cb(client, msg);
+            printf("Text frame\n");
+            client->ws->msg_cb(client, msg);
+        }
 
-            case TWS_FRAME_OP_CLOSE:
-                printf("Close frame: %d\n", type);
-                client->ws->close_cb(client);
-                goto closed;
+        if(type == TWS_FRAME_OP_CLOSE)
+        {
+            printf("Close frame: %d\n", type);
+            client->ws->close_cb(client);
+            goto closed;
         }
     }
 
