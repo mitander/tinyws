@@ -195,7 +195,7 @@ static void *tws_connect(tws_client_t *client)
         return NULL;
     }
 
-    sock = (int) (intptr_t) client->socket;
+    sock = client->socket;
 
     while((n = read(sock, frame, sizeof(frame))) > 0)
     {
