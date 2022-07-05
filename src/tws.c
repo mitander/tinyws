@@ -103,11 +103,9 @@ int tws_send_frame(tws_client_t *client, unsigned char *msg)
 static unsigned char *tws_receive_frame(unsigned char *frame, size_t len, int *type)
 {
     unsigned char *msg;
-    uint8_t mask;
     uint8_t full_len;
     uint8_t idx_mask;
     uint8_t idx_data;
-    size_t data_len;
     uint8_t masks[4];
     int i, j;
 
@@ -119,9 +117,7 @@ static unsigned char *tws_receive_frame(unsigned char *frame, size_t len, int *t
     {
         case(TWS_FIN | TWS_FRAME_OP_TXT):
             *type = TWS_FRAME_OP_TXT;
-            mask = frame[1];
-            full_len = mask & 0x7F;
-
+            full_len = frame[1] & 0x7F;
 
             switch(full_len)
             {
@@ -134,14 +130,13 @@ static unsigned char *tws_receive_frame(unsigned char *frame, size_t len, int *t
             }
 
             idx_data = idx_mask + 4;
-            data_len = len - idx_data;
 
-            masks[0] = frame[idx_mask + 0];
-            masks[1] = frame[idx_mask + 1];
-            masks[2] = frame[idx_mask + 2];
-            masks[3] = frame[idx_mask + 3];
+            for(i = 0; i < 4; i++)
+            {
+                masks[i] = frame[idx_mask + i];
+            }
 
-            msg = malloc(sizeof(unsigned char) * (data_len + 1));
+            msg = malloc(sizeof(unsigned char) * ((len - idx_data) + 1));
             for(i = idx_data, j = 0; i < len; i++, j++)
             {
                 msg[j] = frame[i] ^ masks[j % 4];
@@ -165,6 +160,7 @@ char *tws_get_address(int sockfd)
     socklen_t addr_size;
 
     addr_size = sizeof(struct sockaddr_in);
+
     if(getpeername(sockfd, (struct sockaddr *) &addr, &addr_size) < 0)
     {
         printf("Could not get peer name");
@@ -217,6 +213,7 @@ static void *tws_connect(tws_client_t *client)
             free(res);
         }
 
+        // TODO: Upon client connect the first frame always returns as NULL. See why this is.
         if((msg = tws_receive_frame(frame, n, &type)) == NULL)
         {
             printf("Invalid frame from client %d\n", sock);
