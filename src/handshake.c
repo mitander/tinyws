@@ -19,7 +19,7 @@ int tws_handshake_accept(char *key, char **dst)
         return -1;
     }
 
-    str = calloc(1, sizeof(char) * (TWS_KEY_LEN + TWS_MS_LEN + 1));
+    str = calloc(1, sizeof(char) * (TWS_KEY_MS_LEN + 1));
     if(!str)
     {
         return -1;
