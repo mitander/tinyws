@@ -1,5 +1,5 @@
-# tws
-a tiny web socket library
+# tinyws
+A tiny web socket library
 
 # Usage
 
